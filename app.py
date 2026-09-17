@@ -6,6 +6,7 @@ from openai import OpenAI
 # 環境変数の読み込み
 load_dotenv()
 api_key = os.environ.get("OPENAI_API_KEY")
+xai_api_key = os.environ.get("XAI_API_KEY")
 
 st.set_page_config(page_title="AI Editor Suite", page_icon="📝", layout="wide")
 
@@ -71,24 +72,37 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 if not api_key or api_key == "your_openai_api_key_here":
-    st.error("APIキーが設定されていません。`.env` ファイルに OpenAI API キーを設定してから再読み込みしてください。")
+    st.error("OpenAIのAPIキーが設定されていません。`.env` または Secrets を設定してください。")
     st.stop()
 
+# OpenAI クライアント初期化
 client = OpenAI(api_key=api_key)
+
+# xAI (Grok) クライアント初期化 (キーがあれば)
+xai_client = None
+if xai_api_key:
+    xai_client = OpenAI(
+        api_key=xai_api_key,
+        base_url="https://api.x.ai/v1",
+    )
 
 # --- ページヘッダー ---
 st.markdown("""
 <div class="page-header">
     <h1>📝 AI Editor Suite</h1>
-    <p>夜職経験の情報商材化サポート / 構成案の自動生成・原稿のブラッシュアップ</p>
+    <p>夜職経験の情報商材化サポート / 構成案の自動生成・原稿のブラッシュアップ・X向けポスト作成</p>
 </div>
 """, unsafe_allow_html=True)
 
 # タブでツールを切り替え
-tab1, tab2 = st.tabs(["1. SEO・構成最適化ツール", "2. 記事校閲・ブラッシュアップツール"])
+tab1, tab2, tab3 = st.tabs([
+    "1. SEO・構成最適化ツール", 
+    "2. 記事校閲・ブラッシュアップツール",
+    "3. X(Twitter)用ポスト生成 (Grok)"
+])
 
 # ----------------------------------------
-# ツール1: 構成・タイトル生成
+# ツール1: 構成・タイトル生成 (OpenAI)
 # ----------------------------------------
 with tab1:
     st.markdown("### 📌 構成・タイトル生成")
@@ -132,7 +146,7 @@ with tab1:
             st.warning("テーマを入力してください。")
 
 # ----------------------------------------
-# ツール2: 記事校閲・ブラッシュアップ
+# ツール2: 記事校閲・ブラッシュアップ (OpenAI)
 # ----------------------------------------
 with tab2:
     st.markdown("### ✨ 記事校閲・ブラッシュアップ")
@@ -178,3 +192,51 @@ with tab2:
                     st.error(f"エラーが発生しました: {e}")
         else:
             st.warning("原稿を入力してください。")
+
+# ----------------------------------------
+# ツール3: X(Twitter)用ポスト生成 (Grok)
+# ----------------------------------------
+with tab3:
+    st.markdown("### 🐦 X (Twitter) 用ポスト作成")
+    st.write("Xのアルゴリズムとトレンドに強い「**xAI Grok**」を使って、ファンを獲得するためのポスト（ツイート）文案を作成します。")
+    
+    if not xai_client:
+        st.warning("`XAI_API_KEY` が設定されていないため、Grokは利用できません。")
+    else:
+        x_input = st.text_area("ポストで伝えたい内容や、募集したい悩み", height=150, placeholder="例：新しくnoteを始めたことの告知。現役の子たちの悩みを聞いてみたい、など...", key="x_input")
+        
+        if st.button("Grokでポストを作成する", key="btn_grok"):
+            if x_input:
+                with st.spinner("GrokがX向けのバズるポストを考案しています..."):
+                    prompt = f"""
+あなたはX（旧Twitter）のアルゴリズム、トレンド、バズる構文に精通した凄腕のSNSマーケターです。
+クライアントは元ランカー（夜職）で、今後は自身の経験を情報商材（note等）として発信し、ファンを獲得していきます。
+
+以下の「伝えたい内容」を元に、夜職の現役層の共感を引き出し、エンゲージメント（いいね・リプライ・リポスト）を獲得しやすいポスト（ツイート）の文案を3パターン作成してください。
+
+【条件】
+- 140文字以内に収める短文パターンと、ツリー形式（スレッド）で長めに語るパターンの両方を含めること。
+- 夜職界隈でウケやすい、リアルで刺さる言葉選びをすること。
+- Grok特有の、少しウィットに富んだエッジの効いた表現も歓迎します。
+
+【伝えたい内容】
+{x_input}
+"""
+                    try:
+                        response = xai_client.chat.completions.create(
+                            model="grok-beta",
+                            messages=[
+                                {"role": "system", "content": "You are a professional X (Twitter) marketer expert in viral posts and engagement."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.8
+                        )
+                        st.success("Grokによるポスト文案の生成が完了しました！")
+                        st.markdown("### 生成結果 (Powered by Grok)")
+                        st.markdown(response.choices[0].message.content)
+                        
+                        st.text_area("コピー用", value=response.choices[0].message.content, height=300, key="copy_x_post")
+                    except Exception as e:
+                        st.error(f"Grok APIエラーが発生しました: {e}")
+            else:
+                st.warning("内容を入力してください。")
