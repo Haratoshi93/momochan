@@ -194,49 +194,50 @@ with tab2:
             st.warning("原稿を入力してください。")
 
 # ----------------------------------------
-# ツール3: X(Twitter)用ポスト生成 (Grok)
+# ツール3: X(Twitter) 市場リサーチ＆悩み分析 (Grok)
 # ----------------------------------------
 with tab3:
-    st.markdown("### 🐦 X (Twitter) 用ポスト作成")
-    st.write("Xのアルゴリズムとトレンドに強い「**xAI Grok**」を使って、ファンを獲得するためのポスト（ツイート）文案を作成します。")
+    st.markdown("### 🐦 X (Twitter) 市場リサーチ・悩み分析")
+    st.write("Xのトレンドやユーザー心理の解析に強い「**xAI Grok**」を利用し、市場のリアルな声を分析します。")
+    st.write("リサーチしたいキーワードや、実際に気になったポスト（ツイート）のテキストを貼り付けてください。")
     
     if not xai_client:
         st.warning("`XAI_API_KEY` が設定されていないため、Grokは利用できません。")
     else:
-        x_input = st.text_area("ポストで伝えたい内容や、募集したい悩み", height=150, placeholder="例：新しくnoteを始めたことの告知。現役の子たちの悩みを聞いてみたい、など...", key="x_input")
+        x_input = st.text_area("リサーチキーワード、または実際のポスト内容", height=150, placeholder="例：『最近お客さんとのLINEがしんどい』というポストがバズっていた。ここからどんな悩みが抽出できる？\n\n例：検索キーワード「夜職 辞めたい」「売上 焦り」", key="x_input")
         
-        if st.button("Grokでポストを作成する", key="btn_grok"):
+        if st.button("Grokで市場の悩みを分析する", key="btn_grok"):
             if x_input:
-                with st.spinner("GrokがX向けのバズるポストを考案しています..."):
+                with st.spinner("GrokがXの文脈を元に市場をリサーチ・分析しています..."):
                     prompt = f"""
-あなたはX（旧Twitter）のアルゴリズム、トレンド、バズる構文に精通した凄腕のSNSマーケターです。
+あなたはX（旧Twitter）のアルゴリズム、最新トレンド、そしてユーザー心理の深い解析に精通した凄腕のSNSマーケターです。
 クライアントは元ランカー（夜職）で、今後は自身の経験を情報商材（note等）として発信し、ファンを獲得していきます。
 
-以下の「伝えたい内容」を元に、夜職の現役層の共感を引き出し、エンゲージメント（いいね・リプライ・リポスト）を獲得しやすいポスト（ツイート）の文案を3パターン作成してください。
+以下の「キーワード」や「実際のポスト内容」を元に、夜職の現役層が**今、具体的にどんなことに悩み、どんな言葉（インサイト）に反応するのか**を深くリサーチ・分析してください。
 
-【条件】
-- 140文字以内に収める短文パターンと、ツリー形式（スレッド）で長めに語るパターンの両方を含めること。
-- 夜職界隈でウケやすい、リアルで刺さる言葉選びをすること。
-- Grok特有の、少しウィットに富んだエッジの効いた表現も歓迎します。
+【分析・出力の条件】
+1. **悩みの深堀り:** 表面的な悩みだけでなく、その裏にある本音や恐怖（例：将来への不安、承認欲求など）を言語化してください。
+2. **需要の高いトピック案:** 分析結果を踏まえ、次にnoteで書くべき「需要の高い記事トピック案」を3つ提案してください。
+3. **Grokの強みを活かす:** X界隈特有のリアルな空気感や言葉選び（文脈）を踏まえた、生々しく実用的な分析結果にしてください。
 
-【伝えたい内容】
+【リサーチ対象（キーワード・実際のポスト等）】
 {x_input}
 """
                     try:
                         response = xai_client.chat.completions.create(
                             model="grok-beta",
                             messages=[
-                                {"role": "system", "content": "You are a professional X (Twitter) marketer expert in viral posts and engagement."},
+                                {"role": "system", "content": "You are a professional X (Twitter) market researcher and data analyst."},
                                 {"role": "user", "content": prompt}
                             ],
-                            temperature=0.8
+                            temperature=0.7
                         )
-                        st.success("Grokによるポスト文案の生成が完了しました！")
-                        st.markdown("### 生成結果 (Powered by Grok)")
+                        st.success("Grokによるリサーチ・分析が完了しました！")
+                        st.markdown("### リサーチ結果 (Powered by Grok)")
                         st.markdown(response.choices[0].message.content)
                         
                         st.text_area("コピー用", value=response.choices[0].message.content, height=300, key="copy_x_post")
                     except Exception as e:
                         st.error(f"Grok APIエラーが発生しました: {e}")
             else:
-                st.warning("内容を入力してください。")
+                st.warning("リサーチ対象を入力してください。")
