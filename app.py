@@ -107,15 +107,18 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ----------------------------------------
 with tab1:
     st.markdown('<div class="step-title">Step 1: トピック案のリサーチ</div>', unsafe_allow_html=True)
-    st.write("Xのポストやキーワードをもとに、Grok（またはOpenAI）が市場の悩みを分析し、noteで書くべきトピック案と構成案をリサーチします。")
+    st.write("XのトレンドからGrokが市場の悩みを分析し、noteで書くべきトピック案と構成案をリサーチします。")
+    st.info("💡 **何も入力せずにボタンを押す** と、Grokが自動的に「今、Xの夜職界隈で話題になっているトレンド・悩み」をピックアップして提案します！特定の話題を深掘りしたい場合のみ、キーワードやポストを入力してください。")
     
-    research_input = st.text_area("リサーチ対象（気になるXのポストやキーワード）", height=120, placeholder="例：「最近お客さんとのLINEがしんどい」というポスト。ここからどんな悩みが抽出できる？", key="research_input")
+    research_input = st.text_area("リサーチ対象（任意：空欄でおまかせ検索）", height=120, placeholder="空欄のままでOK！特定の話題を絞りたい場合のみ入力（例：「最近お客さんとのLINEがしんどい」など）", key="research_input")
     
     use_grok = st.checkbox("X(Twitter)の最新トレンド分析に xAI Grok を使用する", value=True)
     
     if st.button("市場をリサーチし、トピック案を作成", key="btn_research"):
-        if research_input:
-            with st.spinner("市場の悩みを分析し、最適なトピックを抽出しています..."):
+        with st.spinner("市場の悩みを分析し、最適なトピックを抽出しています..."):
+            
+            if research_input.strip():
+                # キーワード入力がある場合のプロンプト
                 prompt = f"""
 あなたは凄腕のSNSマーケターであり、noteのアルゴリズムや読者心理に精通したプロの編集者です。
 クライアントは元ランカー（夜職）で、自身の経験を元にnoteで記事を執筆します。
@@ -130,36 +133,49 @@ with tab1:
 【リサーチ対象】
 {research_input}
 """
-                try:
-                    if use_grok and xai_client:
-                        response = xai_client.chat.completions.create(
-                            model="grok-beta",
-                            messages=[
-                                {"role": "system", "content": "You are a professional market researcher and editor."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.7
-                        )
-                        model_used = "Grok"
-                    else:
-                        response = client.chat.completions.create(
-                            model="gpt-4o",
-                            messages=[
-                                {"role": "system", "content": "You are a professional SEO marketer and editor."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            temperature=0.7
-                        )
-                        model_used = "OpenAI (GPT-4o)"
-                        
-                    st.success(f"{model_used} によるリサーチと構成案の作成が完了しました！")
-                    st.markdown("### リサーチ・構成案 結果")
-                    st.markdown(response.choices[0].message.content)
-                    st.text_area("コピー用", value=response.choices[0].message.content, height=300, key="copy_research")
-                except Exception as e:
-                    st.error(f"エラーが発生しました: {e}")
-        else:
-            st.warning("リサーチ対象を入力してください。")
+            else:
+                # 入力がない（おまかせトレンド検索）場合のプロンプト
+                prompt = """
+あなたは凄腕のSNSマーケターであり、noteのアルゴリズムや読者心理に精通したプロの編集者です。
+クライアントは元ランカー（夜職）で、自身の経験を元にnoteで記事を執筆します。
+
+現在、X（旧Twitter）の「夜職界隈（キャバクラ、ホスト、コンカフェ、風俗など）」において、
+現役層の間で【最もリアルに話題になっている悩み、トレンド、バズっているトピック】をあなた自身の知識と最新の文脈から3つピックアップし、分析してください。
+
+【分析・出力の条件】
+1. **現在のトレンド分析:** 今、具体的にどんなことに病んでいるか、どんな本音や恐怖が話題になりやすいかを言語化すること。
+2. **需要の高いトピック案:** そのトレンドを踏まえ、クライアントが次にnoteで書くべき「クリック率が高まるタイトル案」を3つ提案すること。
+3. **構成案（プロット）:** それぞれの案に対し、導入（共感）→ 問題提起 → 解決策（経験談）→ まとめ の王道パターンで、クライアントが「ここにどんな経験談を書けばいいか」分かるように指南すること。
+"""
+
+            try:
+                if use_grok and xai_client:
+                    response = xai_client.chat.completions.create(
+                        model="grok-beta",
+                        messages=[
+                            {"role": "system", "content": "You are a professional market researcher and editor."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.8
+                    )
+                    model_used = "Grok"
+                else:
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "You are a professional SEO marketer and editor."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.7
+                    )
+                    model_used = "OpenAI (GPT-4o)"
+                    
+                st.success(f"{model_used} によるトレンドリサーチと構成案の作成が完了しました！")
+                st.markdown("### リサーチ・構成案 結果")
+                st.markdown(response.choices[0].message.content)
+                st.text_area("コピー用", value=response.choices[0].message.content, height=300, key="copy_research")
+            except Exception as e:
+                st.error(f"エラーが発生しました: {e}")
 
 # ----------------------------------------
 # Step 2: ライターによる記事の作成
