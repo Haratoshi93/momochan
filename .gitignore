@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+input_theme.txt
+input_draft.txt
+output_outline.md
+output_proofread.md
